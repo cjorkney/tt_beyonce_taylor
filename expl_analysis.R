@@ -4,7 +4,7 @@ library(stringr)
 library(stopwords)
 library(ggplot2)
 library(forcats)
-
+library(tidytext)
 
 
 
@@ -17,12 +17,19 @@ lyrics_t <- tuesdata$taylor_swift_lyrics
 
 # TS: Tidy data to one word per line
 
-punct_regex <- '[!,\\.\\:"\\?\\)\\\\]'
+punct_regex <- '[!,\\.\\:"\\?\\(\\)\\\\]'
+
+extra_stopwords <- c('can', 'know', 'ooh', 'yeah', 'see',
+                     'back', "'cause", 'oh-oh', 'oh', 'ha',
+                     'say', 'said', 'got', 'tell', 'look')
+
+
+# Clean and explore Taylor ------------------------------------------------
 
 tidy_tay <- lyrics_t %>%
-  select(-`Artist `) %>%
   rename(
-    title = `Title `,
+    artist = `Artist `,
+    song = `Title `,
     lyrics = Lyrics,
     album = Album
     ) %>%
@@ -31,7 +38,7 @@ tidy_tay <- lyrics_t %>%
     word = {
       lyrics %>%
         str_squish() %>%
-        str_replace_all(punct_regex, "") %>%
+        str_remove_all(punct_regex) %>%
         str_split(' ')
     }
   ) %>% 
@@ -39,7 +46,8 @@ tidy_tay <- lyrics_t %>%
   select(-lyrics)
 
 tidy_tay_redux <- tidy_tay %>%
-  filter(!(word %in% stopwords()))
+  filter(!(word %in% stopwords()),
+         !(word %in% extra_stopwords))
 
 # Explore the words
 
@@ -76,19 +84,56 @@ topn_by_album <- word_count_album %>%
   top_n(topn, n) %>%
   ungroup()
 
-# Make "reorder_within" function?
 
 topn_album_plot <- topn_by_album %>%
-  ggplot(aes(x = fct_reorder(word, n), y = n)) +
-  geom_bar(stat = "identity") +
+  ggplot(aes(x = reorder_within(word, n, album),
+             y = n)) +
+  geom_bar(aes(fill = album),
+           stat = "identity") +
   labs(
-    title = "Most frequently used words in Taylor Swift songs",
+    title = "Most frequently used words in Taylor Swift songs by album",
     x = "Word",
     y = "Frequency"
   ) +
+  scale_x_reordered() +
   coord_flip() +
   facet_wrap(~ album, scales = "free")
 
 topn_album_plot
 
+
+# Clean and explore Beyonce -----------------------------------------------
+
+tidy_bey <- lyrics_b %>% 
+  rename(
+    song = song_name,
+    artist = artist_name
+  ) %>% 
+  mutate(
+    line = str_to_lower(line),
+    word = {
+      line %>% 
+        str_squish() %>% 
+        str_remove_all(punct_regex) %>%
+        str_split(' ')
+    }
+  ) %>%
+  unnest(word)
+
+tidy_bey_redux <- tidy_bey %>%
+  filter(
+    !(word %in% stopwords()),
+    !(word %in% extra_stopwords)
+    )
+
+word_count_bey <- tidy_bey_redux %>%
+  count(word, sort = TRUE) %>%
+  mutate(prop = n/sum(n))
+
+topn_bey <- word_count_bey %>%
+  top_n(topn, wt = n)
+
+ggplot(topn_bey, aes(x = fct_reorder(word, n), y = n)) +
+  geom_bar(stat = 'identity') +
+  coord_flip()
 
