@@ -34,6 +34,7 @@ tidy_tay <- lyrics_t %>%
     album = Album
     ) %>%
   mutate(
+    artist = str_trim(artist),
     lyrics = str_to_lower(lyrics),
     word = {
       lyrics %>%
@@ -51,9 +52,9 @@ tidy_tay_redux <- tidy_tay %>%
 
 # Explore the words
 
-word_count_simple <- tidy_tay_redux %>%
-  count(word) %>%
-  arrange(desc(n))
+word_count_tay <- tidy_tay_redux %>%
+  count(artist, word, sort = TRUE) %>% 
+  mutate(prop = n / sum(n))
 
 topn <- 20
 
@@ -127,8 +128,8 @@ tidy_bey_redux <- tidy_bey %>%
     )
 
 word_count_bey <- tidy_bey_redux %>%
-  count(word, sort = TRUE) %>%
-  mutate(prop = n/sum(n))
+  count(artist, word, sort = TRUE) %>%
+  mutate(prop = n / sum(n))
 
 topn_bey <- word_count_bey %>%
   top_n(topn, wt = n)
@@ -136,4 +137,26 @@ topn_bey <- word_count_bey %>%
 ggplot(topn_bey, aes(x = fct_reorder(word, n), y = n)) +
   geom_bar(stat = 'identity') +
   coord_flip()
+
+
+# Combine two word count tables and compare -------------------------------
+
+word_count <- rbind(word_count_tay, word_count_bey)
+
+# Plot top_n bar charts side by side
+
+word_count %>%
+  group_by(artist) %>% 
+  top_n(30, wt = n) %>% 
+  ungroup() %>%
+  ggplot(aes(x = reorder_within(word, n, artist), y = n)) +
+    geom_bar(stat = 'identity',
+             aes(fill = artist)) +
+    scale_x_reordered() +
+    coord_flip() +
+    facet_wrap(~ artist, scales = 'free')
+
+
+
+
 
