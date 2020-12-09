@@ -156,7 +156,22 @@ word_count %>%
     coord_flip() +
     facet_wrap(~ artist, scales = 'free')
 
+unique_words <- word_count %>%
+  group_by(artist) %>% 
+  summarise(n_unique = n_distinct(word))
 
+ggplot(unique_words, aes(x = artist, y = n_unique)) +
+  geom_bar(stat = "identity",
+           aes(fill = artist)) +
+  labs(
+    title = 'Beyonce has used more unique words than Taylor Swift',
+    subtitle = 'Excludes stop words',
+    x = NULL,
+    y = 'Unique word count'
+  )
 
+# Scale number of unique words by total number of words ever used?
+#   - gives some measure of how often words are repeated
+#   - calculate from prop, or sum of n?
 
 
