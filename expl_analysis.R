@@ -58,7 +58,7 @@ word_count_tay <- tidy_tay_redux %>%
 
 topn <- 20
 
-topn_words <- word_count_simple[1:topn, ]
+topn_words <- word_count_tay[1:topn, ]
 
 topn_plot <- topn_words %>%
   ggplot(aes(x = fct_reorder(word, n), y = n)) +
