@@ -5,8 +5,9 @@ library(stopwords)
 library(ggplot2)
 library(forcats)
 library(tidytext)
+library(purrr)
 
-
+source(file.path('R', 'summarise_total_words.R'))
 
 
 # Import data
@@ -144,7 +145,6 @@ ggplot(topn_bey, aes(x = fct_reorder(word, n), y = n)) +
 word_count <- rbind(word_count_tay, word_count_bey)
 
 # Plot top_n bar charts side by side
-
 word_count %>%
   group_by(artist) %>% 
   top_n(30, wt = n) %>% 
@@ -154,12 +154,19 @@ word_count %>%
              aes(fill = artist)) +
     scale_x_reordered() +
     coord_flip() +
-    facet_wrap(~ artist, scales = 'free')
+    facet_wrap(~ artist, scales = 'free') +
+    labs(
+      title = 'Comparison of most frequently-used words by each artist',
+      subtitle = 'Excludes stop words',
+      y = 'Frequency', x = 'Word'
+    )
 
+# Summarise unique words per artist
 unique_words <- word_count %>%
   group_by(artist) %>% 
   summarise(n_unique = n_distinct(word))
 
+# Plot number of unique words
 ggplot(unique_words, aes(x = artist, y = n_unique)) +
   geom_bar(stat = "identity",
            aes(fill = artist)) +
@@ -169,6 +176,24 @@ ggplot(unique_words, aes(x = artist, y = n_unique)) +
     x = NULL,
     y = 'Unique word count'
   )
+
+# Summarise total words used (incl. duplicates but excl. stop words)
+
+total_words <- map_dfr(
+  map(
+    list(tidy_bey_redux, tidy_tay_redux),
+    summarise_total_words
+  ),
+  ~tibble(
+    artist = .$artist,
+    total_words = .$total_words
+  )
+)
+
+word_summary <- total_words %>% 
+  left_join(unique_words, by= 'artist') %>%
+  mutate(unique_rate = n_unique / total_words)
+
 
 # Scale number of unique words by total number of words ever used?
 #   - gives some measure of how often words are repeated
